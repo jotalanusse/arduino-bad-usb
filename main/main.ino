@@ -3,244 +3,162 @@
  *         https://github.com/jotalanusse
  * GIT:
  *         https://github.com/jotalanusse/arduino-bad-usb
- * 
+ *
  * Attributions:
  *         Special thanks to Seytonic for developing the original
  *         version of this script. Please go and check out his
  *         work:
- * 
+ *
  *         https://twitter.com/seytonic
  *         https://www.youtube.com/seytonic
  */
 
-
-#include <SPI.h>
-#include <SD.h>
-#include <string.h>
 #include "Keyboard.h"
+#include <SD.h>
+#include <SPI.h>
+#include <string.h>
 
-File scriptFile;
- boolean first = true;
+// Constants
+const char newlineChar = '\n';
+const char carriageReturnChar = '\r';
+const char spaceChar = ' ';
 
-void setup() { 
-  String dip = ""; // Name of the file that will be opened
+// Global variables
+const int pins[] = {5, 6, 7, 8, 9}; // Pins to be used as input
 
-  // Sets the given pins as switches for the dip switches
-  pinMode(6, INPUT_PULLUP);
-  pinMode(7, INPUT_PULLUP);
-  pinMode(8, INPUT_PULLUP);
-  pinMode(9, INPUT_PULLUP);
-  
-  // Switches are checked, dip string is contructed
-  if (digitalRead(6) == LOW){dip += "1";} else {dip += "0";}
-  if (digitalRead(7) == LOW){dip += "1";} else {dip += "0";}
-  if (digitalRead(8) == LOW){dip += "1";} else {dip += "0";}
-  if (digitalRead(9) == LOW){dip += "1";} else {dip += "0";}
+void setup() {
+  int fileIndex = 0; // Index of the file to be read
 
-  dip += ".txt";
+  // Set up each pin as an input
+  for (int i = 0; i < sizeof(pins); i = i + 1) {
+    int pin = pins[i];
+    pinMode(pin, INPUT_PULLUP);
+  }
 
+  // If the pin is in a state of HIGH, we add to the index
+  for (int i = 0; i < sizeof(pins); i = i + 1) {
+    int pin = pins[i];
+    int pinWeight =  sizeof(pins) - i -1; // We have to subtract 1 because the for loop starts at 0
 
+    if (digitalRead(pin) == HIGH) {
+      fileIndex += pow(2, pinWeight);
+    }
+  }
+
+  // Start the SD card on pin 4
   if (!SD.begin(4)) {
     return;
   }
-  
-  // Desired file is opened
-  myFile = SD.open(dip);
-  if (myFile) {
-    Keyboard.begin();
-    
-    String line = "";
-    while (myFile.available()) {
-      char m = myFile.read();
-      if (m == '\n'){
-        Line(line);
-        line = "";
-        }
-        else if((int) m != 13)
-        {
-          line += m;
-        }
-    }
-    Line(line);
-    
-    myFile.close();
-  } else {
-  }
 
-  Keyboard.end();
+  // Open the file
+  String fileName = String(fileIndex) + ".txt";
+  File scriptFile = SD.open(fileName);
+
+  // If our file exists
+  if (scriptFile) {
+    Keyboard.begin();
+
+    String line = "";
+
+    // While there's is still bytes available in the file
+    while (scriptFile.available()) {
+      char character = scriptFile.read();
+
+      // If the character is not a newline or a carriage return
+      if (character != newlineChar && character != carriageReturnChar) {
+        line += character;
+      } else {
+        processLine(line);
+        line = "";
+      }
+    }
+    processLine(line);
+
+    scriptFile.close();
+    Keyboard.end();
+  }
 }
 
-void Line(String l)
-{
-  int space_1 = l.indexOf(" ");
-  if (space_1 == -1)
-  {
-    Press(l);
-  }
-  else if (l.substring(0,space_1) == "STRING")
-  {
-    Keyboard.print(l.substring(space_1 + 1));
-  }
-  else if (l.substring(0,space_1) == "DELAY")
-  {
-    int delaytime = l.substring(space_1 + 1).toInt();
-    delay(delaytime);
-  }
-  else if(l.substring(0,space_1) == "REM"){}
-  else
-  {
-      String remain = l;
+void processLine(String line) {
+  int spaceIndex = line.indexOf(spaceChar);
 
-      while(remain.length() > 0)
-      {
-        int latest_space = remain.indexOf(" ");
-        if (latest_space == -1)
-        {
-          Press(remain);
+  // If a space exists this is a complex line (command + arguments, or set of keystrokes), otherwise it's a simple keystroke
+  if (spaceIndex > -1) {
+    String command = line.substring(0, spaceIndex);
+    String argument = line.substring(spaceIndex + 1);
+
+    if (command == "REM") { // This is a comment, so we just ignore it
+      // Hello there!
+    } else  if (command ==  "STRING") { // This will send a string of text as ke]yboard input
+      Keyboard.print(argument);
+    } else if (command ==  "DELAY") { // This will delay the script for a certain amount of time
+      int delayTime = argument.toInt();
+      delay(delayTime);
+    } else { // This is a set of keystrokes we have to chain together
+      String remain = argument;
+
+      while (remain.length() > 0) {
+        int latestSpace = remain.indexOf(spaceChar);
+
+        if (latestSpace == -1) {
+          pressKey(remain);
           remain = "";
+        } else {
+          pressKey(remain.substring(0, latestSpace));
+          remain = remain.substring(latestSpace + 1);
         }
-        else
-        {
-          Press(remain.substring(0, latest_space));
-          remain = remain.substring(latest_space + 1);
-        }
+
         delay(5);
       }
+    }
+  } else {
+    pressKey(line);
   }
 
   Keyboard.releaseAll();
 }
 
-
-void Press(String b)
-{
-  if(b.length() == 1)
-  {
-    char c = b[0];
-    Keyboard.press(c);
-  }
-  else if (b.equals("ENTER"))
-  {
-    Keyboard.press(KEY_RETURN);
-  }
-  else if (b.equals("CTRL"))
-  {
-    Keyboard.press(KEY_LEFT_CTRL);
-  }
-    else if (b.equals("SHIFT"))
-  {
-    Keyboard.press(KEY_LEFT_SHIFT);
-  }
-    else if (b.equals("ALT"))
-  {
-    Keyboard.press(KEY_LEFT_ALT);
-  }
-    else if (b.equals("GUI"))
-  {
-    Keyboard.press(KEY_LEFT_GUI);
-  }
-    else if (b.equals("UP") || b.equals("UPARROW"))
-  {
-    Keyboard.press(KEY_UP_ARROW);
-  }
-    else if (b.equals("DOWN") || b.equals("DOWNARROW"))
-  {
-    Keyboard.press(KEY_DOWN_ARROW);
-  }
-    else if (b.equals("LEFT") || b.equals("LEFTARROW"))
-  {
-    Keyboard.press(KEY_LEFT_ARROW);
-  }
-    else if (b.equals("RIGHT") || b.equals("RIGHTARROW"))
-  {
-    Keyboard.press(KEY_RIGHT_ARROW);
-  }
-    else if (b.equals("DELETE"))
-  {
-    Keyboard.press(KEY_DELETE);
-  }
-    else if (b.equals("PAGEUP"))
-  {
-    Keyboard.press(KEY_PAGE_UP);
-  }
-    else if (b.equals("PAGEDOWN"))
-  {
-    Keyboard.press(KEY_PAGE_DOWN);
-  }
-    else if (b.equals("HOME"))
-  {
-    Keyboard.press(KEY_HOME);
-  }
-    else if (b.equals("ESC"))
-  {
-    Keyboard.press(KEY_ESC);
-  }
-    else if (b.equals("INSERT"))
-  {
-    Keyboard.press(KEY_INSERT);
-  }
-    else if (b.equals("TAB"))
-  {
-    Keyboard.press(KEY_TAB);
-  }
-    else if (b.equals("END"))
-  {
-    Keyboard.press(KEY_END);
-  }
-    else if (b.equals("CAPSLOCK"))
-  {
-    Keyboard.press(KEY_CAPS_LOCK);
-  }
-    else if (b.equals("F1"))
-  {
-    Keyboard.press(KEY_F1);
-  }
-    else if (b.equals("F2"))
-  {
-    Keyboard.press(KEY_F2);
-  }
-    else if (b.equals("F3"))
-  {
-    Keyboard.press(KEY_F3);
-  }
-    else if (b.equals("F4"))
-  {
-    Keyboard.press(KEY_F4);
-  }
-    else if (b.equals("F5"))
-  {
-    Keyboard.press(KEY_F5);
-  }
-    else if (b.equals("F6"))
-  {
-    Keyboard.press(KEY_F6);
-  }
-    else if (b.equals("F7"))
-  {
-    Keyboard.press(KEY_F7);
-  }
-    else if (b.equals("F8"))
-  {
-    Keyboard.press(KEY_F8);
-  }
-    else if (b.equals("F9"))
-  {
-    Keyboard.press(KEY_F9);
-  }
-    else if (b.equals("F10"))
-  {
-    Keyboard.press(KEY_F10);
-  }
-    else if (b.equals("F11"))
-  {
-    Keyboard.press(KEY_F11);
-  }
-    else if (b.equals("F12"))
-  {
-    Keyboard.press(KEY_F12);
+// TODO: Make this function more pretty
+// TODO: Use a switch statement instead of if statements?
+void pressKey(String key) {
+  // Check if the key is a simple or special key
+  if (key.length() == 1) {
+    char character = key.charAt(0); // Get the character
+    Keyboard.press(character); // Press the character
+  } else {
+    if (key == "ENTER") Keyboard.press(KEY_RETURN);
+    if (key == "CTRL") Keyboard.press(KEY_LEFT_CTRL);
+    if (key == "SHIFT") Keyboard.press(KEY_LEFT_SHIFT);
+    if (key == "ALT") Keyboard.press(KEY_LEFT_ALT);
+    if (key == "GUI") Keyboard.press(KEY_LEFT_GUI);
+    if (key == "UP" || key == "UPARROW") Keyboard.press(KEY_UP_ARROW);
+    if (key == "DOWN" || key == "DOWNARROW") Keyboard.press(KEY_DOWN_ARROW);
+    if (key == "LEFT" || key == "LEFTARROW")  Keyboard.press(KEY_LEFT_ARROW);
+    if (key == "RIGHT" || key == "RIGHTARROW")Keyboard.press(KEY_RIGHT_ARROW);
+    if (key == "DELETE") Keyboard.press(KEY_DELETE);
+    if (key == "PAGEUP") Keyboard.press(KEY_PAGE_UP);
+    if (key == "PAGEDOWN") Keyboard.press(KEY_PAGE_DOWN);
+    if (key == "HOME") Keyboard.press(KEY_HOME);
+    if (key == "ESC")  Keyboard.press(KEY_ESC);
+    if (key == "INSERT")  Keyboard.press(KEY_INSERT);
+    if (key == "TAB") Keyboard.press(KEY_TAB);
+    if (key == "END")Keyboard.press(KEY_END);
+    if (key == "CAPSLOCK")  Keyboard.press(KEY_CAPS_LOCK);
+    if (key == "F1") Keyboard.press(KEY_F1);
+    if (key == "F2")  Keyboard.press(KEY_F2);
+    if (key == "F3")  Keyboard.press(KEY_F3);
+    if (key == "F4")  Keyboard.press(KEY_F4);
+    if (key == "F5")  Keyboard.press(KEY_F5);
+    if (key == "F6") Keyboard.press(KEY_F6);
+    if (key == "F7") Keyboard.press(KEY_F7);
+    if (key == "F8")  Keyboard.press(KEY_F8);
+    if (key == "F9") Keyboard.press(KEY_F9);
+    if (key == "F10")   Keyboard.press(KEY_F10);
+    if (key == "F11") Keyboard.press(KEY_F11);
+    if (key == "F12") Keyboard.press(KEY_F12);
   }
 }
 
 void loop() {
-  // nothing happens after setup
+  // Nothing to do here
 }
