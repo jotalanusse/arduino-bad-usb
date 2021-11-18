@@ -30,13 +30,13 @@ void setup() {
   int fileIndex = 0; // Index of the file to be read
 
   // Set up each pin as an input
-  for (int i = 0; i < sizeof(pins); i = i + 1) {
+  for (int i = 0; i < sizeof(pins); i += 1) {
     int pin = pins[i];
     pinMode(pin, INPUT_PULLUP);
   }
 
   // If the pin is in a state of HIGH, we add to the index
-  for (int i = 0; i < sizeof(pins); i = i + 1) {
+  for (int i = 0; i < sizeof(pins); i += 1) {
     int pin = pins[i];
     int pinWeight =  sizeof(pins) - i -1; // We have to subtract 1 because the for loop starts at 0
 
@@ -45,78 +45,118 @@ void setup() {
     }
   }
 
+  // Parse the index to a file name
+  String fileName = String(fileIndex) + ".txt"; // The file name is the index of the file to be read
+
   // Start the SD card on pin 4
   if (!SD.begin(4)) {
-    return;
+    return; // If the SD card fails to start, we exit
   }
 
-  // Open the file
-  String fileName = String(fileIndex) + ".txt";
+  // Open the script file
   File scriptFile = SD.open(fileName);
 
-  // If our file exists
+  // If the file exist, process it
   if (scriptFile) {
-    Keyboard.begin();
+    Keyboard.begin(); // Start the keyboard for sending keystrokes
 
-    String line = "";
+    processFile(scriptFile); // Start processing the file
+    scriptFile.close();
+
+    Keyboard.end(); // End the keyboard
+  }
+}
+
+// TODO: Rename end character
+String readFile(File file, char endCharacters[], int byteLimit = 0) {
+    String result = "" // The result of our read operation
+
+    // While there's is still bytes available in the file
+    while (file.available()) {
+      char character = scriptFile.read(); // Read the next character
+
+      // If the character is not present in our end characters array
+      for (int i = 0; i < sizeof(endCharacters); i += 1) {
+        char endCharacter = endCharacters[i]; // Thee current end character we want to compare
+
+        // If the character is an end character we return our current result
+        if (character == endCharacter) {
+           return result;
+        }
+      }
+
+      // If we've reached our byte limit for our read operation we return the result
+      if (result.length == byteLimit) {
+        return result;
+      }
+
+      command += character; // Add the character to our result and keep going
+    }
+
+    return result; // Finally return the result
+}
+
+void processFile(File scriptFile) {
+    String command = ""; 
 
     // While there's is still bytes available in the file
     while (scriptFile.available()) {
-      char character = scriptFile.read();
+      char character = scriptFile.read(); // Read the next character
 
       // If the character is not a newline or a carriage return
-      if (character != newlineChar && character != carriageReturnChar) {
-        line += character;
+      if (character != space && character != newlineChar && character != carriageReturnChar) {
+        command += character;
       } else {
-        processLine(line);
-        line = "";
+        // int commandLength = command.length(); // Get the length of the command
+        // int commandIndex = scriptFile.position() - commandLength; // Get the position of the start of the line
+
+        processCommand(command, scriptFile); // Process the command acordingly // TODO: Check spelling
       }
     }
-    processLine(line);
+}
 
-    scriptFile.close();
-    Keyboard.end();
+void processCommand(String command, int commandIndex, File scriptFile) {
+  if (command == "REM") { // This is a comment, so we just ignore it
+    // Hello there!
+  } else  if (command ==  "STRING") { // This will send a string of text as ke]yboard input
+    // Keyboard.print(argument);
+  } else if (command ==  "DELAY") { // This will delay the script for a certain amount of time
+    // int delayTime = argument.toInt();
+    // delay(delayTime);
+  } else { // This is a single keystroke, or a set of keystrokes we have to chain together
+  //   String remain = argument;
+
+  //   while (remain.length() > 0) {
+  //     int latestSpace = remain.indexOf(spaceChar);
+
+  //     if (latestSpace == -1) {
+  //       pressKey(remain);
+  //       remain = "";
+  //     } else {
+  //       pressKey(remain.substring(0, latestSpace));
+  //       remain = remain.substring(latestSpace + 1);
+  //     }
+
+  //     delay(5);
+  //   }
   }
 }
 
-void processLine(String line) {
-  int spaceIndex = line.indexOf(spaceChar);
+// void processLine(String line) {
+//   int spaceIndex = line.indexOf(spaceChar);
 
-  // If a space exists this is a complex line (command + arguments, or set of keystrokes), otherwise it's a simple keystroke
-  if (spaceIndex > -1) {
-    String command = line.substring(0, spaceIndex);
-    String argument = line.substring(spaceIndex + 1);
+//   // If a space exists this is a complex line (command + arguments, or set of keystrokes), otherwise it's a simple keystroke
+//   if (spaceIndex > -1) {
+//     String command = line.substring(0, spaceIndex);
+//     String argument = line.substring(spaceIndex + 1);
 
-    if (command == "REM") { // This is a comment, so we just ignore it
-      // Hello there!
-    } else  if (command ==  "STRING") { // This will send a string of text as ke]yboard input
-      Keyboard.print(argument);
-    } else if (command ==  "DELAY") { // This will delay the script for a certain amount of time
-      int delayTime = argument.toInt();
-      delay(delayTime);
-    } else { // This is a set of keystrokes we have to chain together
-      String remain = argument;
 
-      while (remain.length() > 0) {
-        int latestSpace = remain.indexOf(spaceChar);
+//   } else {
+//     pressKey(line);
+//   }
 
-        if (latestSpace == -1) {
-          pressKey(remain);
-          remain = "";
-        } else {
-          pressKey(remain.substring(0, latestSpace));
-          remain = remain.substring(latestSpace + 1);
-        }
-
-        delay(5);
-      }
-    }
-  } else {
-    pressKey(line);
-  }
-
-  Keyboard.releaseAll();
-}
+//   Keyboard.releaseAll();
+// }
 
 // TODO: Make this function more pretty
 // TODO: Use a switch statement instead of if statements?
