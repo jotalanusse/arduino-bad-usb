@@ -19,13 +19,19 @@
 #include <string.h>
 
 // Constants
-const char newlineChar = '\n';
-const char carriageReturnChar = '\r';
-const char spaceChar = ' ';
+const char NEWLINE_CHAR = '\n';
+const char CARRIAGE_RETURN_CHAR = '\r';
+const char SPACE_CHAR = ' ';
+
+const char COMMAND_END_CHARS[] = {SPACE_CHAR, NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
+const char LINE_END_CHARS[] = {NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
+
+const int MAX_STRING_LENGTH = 1024;
 
 // Global variables
 const int pins[] = {5, 6, 7, 8, 9}; // Pins to be used as input
 
+// The main function where the program is set up
 void setup() {
   int fileIndex = 0; // Index of the file to be read
 
@@ -54,26 +60,35 @@ void setup() {
   }
 
   // Open the script file
-  File scriptFile = SD.open(fileName);
+  File file = SD.open(fileName);
 
   // If the file exist, process it
-  if (scriptFile) {
+  if (file) {
     Keyboard.begin(); // Start the keyboard for sending keystrokes
 
-    processFile(scriptFile); // Start processing the file
-    scriptFile.close();
+    processFile(file); // Start processing the file
+    file.close();
 
     Keyboard.end(); // End the keyboard
   }
 }
 
 // TODO: Rename end character
+// Read a file until and end character is found or a byte limit is reached
 String readFile(File file, char endCharacters[], int byteLimit = 0) {
-    String result = "" // The result of our read operation
+    String result = ""; // The result of our read operation
 
     // While there's is still bytes available in the file
     while (file.available()) {
-      char character = scriptFile.read(); // Read the next character
+      // This is rather confusing, but let me explain.
+      // By using "read()" instead of "peek()" we still
+      // don't know if the character is an end character
+      // or not, but the header moves by one byte anyway.
+      //  
+      // So any end character is unintentionally avoided
+      // Not only from the current read operation, but also
+      // from the next one.
+      char character = file.read(); // Read the next character
 
       // If the character is not present in our end characters array
       for (int i = 0; i < sizeof(endCharacters); i += 1) {
@@ -85,49 +100,42 @@ String readFile(File file, char endCharacters[], int byteLimit = 0) {
         }
       }
 
-      // If we've reached our byte limit for our read operation we return the result
-      if (result.length == byteLimit) {
+      result += character; // Add the character to our result and keep going
+
+      // If we've reached our byte limit for our read operation return the result
+      if (result.length() == byteLimit) {
         return result;
       }
-
-      command += character; // Add the character to our result and keep going
     }
 
     return result; // Finally return the result
 }
 
-void processFile(File scriptFile) {
-    String command = ""; 
-
+// Read a file and process the commands it contains
+void processFile(File file) {
     // While there's is still bytes available in the file
-    while (scriptFile.available()) {
-      char character = scriptFile.read(); // Read the next character
+    while (file.available()) {
+      String command = readFile(file, COMMAND_END_CHARS); // Read until me encounter one or more end characters
 
-      // If the character is not a newline or a carriage return
-      if (character != space && character != newlineChar && character != carriageReturnChar) {
-        command += character;
-      } else {
-        // int commandLength = command.length(); // Get the length of the command
-        // int commandIndex = scriptFile.position() - commandLength; // Get the position of the start of the line
-
-        processCommand(command, scriptFile); // Process the command acordingly // TODO: Check spelling
+      // Only process the command if it's not empty // TODO: Check if this is actually needed
+      if (command != "") {
+        processCommand(command, file); // Process the command accordingly
       }
     }
 }
 
-void processCommand(String command, int commandIndex, File scriptFile) {
+void processCommand(String command, File file) {
   if (command == "REM") { // This is a comment, so we just ignore it
     // Hello there!
   } else  if (command ==  "STRING") { // This will send a string of text as ke]yboard input
-    // Keyboard.print(argument);
+    processStringCommand(file);
   } else if (command ==  "DELAY") { // This will delay the script for a certain amount of time
-    // int delayTime = argument.toInt();
-    // delay(delayTime);
+    processDelayCommand(file);
   } else { // This is a single keystroke, or a set of keystrokes we have to chain together
   //   String remain = argument;
 
   //   while (remain.length() > 0) {
-  //     int latestSpace = remain.indexOf(spaceChar);
+  //     int latestSpace = remain.indexOf(SPACE_CHAR);
 
   //     if (latestSpace == -1) {
   //       pressKey(remain);
@@ -142,8 +150,31 @@ void processCommand(String command, int commandIndex, File scriptFile) {
   }
 }
 
+// Process the string command by converting the string set of keyboard inputs
+void processStringCommand(File file) {
+  // While there's is still bytes available in the file keep reading
+  bool bytesAvailable = true;
+  while (bytesAvailable) {
+    String string = readFile(file, LINE_END_CHARS, MAX_STRING_LENGTH); // Read until me encounter an end character or we reach the byte limit
+
+    // If the string is not empty, we still have things to process
+    if (string != "") {
+      Keyboard.print(string); // Send the string to the keyboard
+    } else {
+      bytesAvailable = false; // There are no bytes left
+    }
+  } 
+}
+
+void processDelayCommand(File file) {
+  String delayString = readFile(file, LINE_END_CHARS); // Read until me encounter an end character
+
+  int delayTime = delayString.toInt(); // Parse the delay time to an int
+  delay(delayTime); // Wait
+}
+
 // void processLine(String line) {
-//   int spaceIndex = line.indexOf(spaceChar);
+//   int spaceIndex = line.indexOf(SPACE_CHAR);
 
 //   // If a space exists this is a complex line (command + arguments, or set of keystrokes), otherwise it's a simple keystroke
 //   if (spaceIndex > -1) {
