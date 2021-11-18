@@ -75,7 +75,6 @@ void setup() {
   }
 }
 
-// TODO: Rename end character
 // Read a file until and end character is found or a byte limit is reached
 String readFile(File file, char endCharacters[], int byteLimit = 0) {
     String result = ""; // The result of our read operation
@@ -85,11 +84,12 @@ String readFile(File file, char endCharacters[], int byteLimit = 0) {
       // This is rather confusing, but let me explain.
       // By using "read()" instead of "peek()" we still
       // don't know if the character is an end character
-      // or not, but the header moves by one byte anyway.
+      // or not, but the reader header moves by one byte
+      // anyway.
       //  
       // So any end character is unintentionally avoided
-      // Not only from the current read operation, but also
-      // from the next one.
+      // from being returned not only from the current
+      // read operation, but also from the next one.
       char character = file.read(); // Read the next character
 
       // If the character is not present in our end characters array
@@ -130,30 +130,16 @@ void processCommand(String command, File file) {
   if (command == "REM") { // This is a comment, so we just ignore it
     // Hello there!
   } else  if (command ==  "STRING") { // This will send a string of text as ke]yboard input
-    processStringCommand(file);
+    stringCommand(file);
   } else if (command ==  "DELAY") { // This will delay the script for a certain amount of time
-    processDelayCommand(file);
+    delayCommand(file);
   } else { // This is a single keystroke, or a set of keystrokes we have to chain together
-  //   String remain = argument;
-
-  //   while (remain.length() > 0) {
-  //     int latestSpace = remain.indexOf(SPACE_CHAR);
-
-  //     if (latestSpace == -1) {
-  //       pressKey(remain);
-  //       remain = "";
-  //     } else {
-  //       pressKey(remain.substring(0, latestSpace));
-  //       remain = remain.substring(latestSpace + 1);
-  //     }
-
-  //     delay(5);
-  //   }
+    keystrokeCommand(command, file);
   }
 }
 
 // Process the string command by converting the string set of keyboard inputs
-void processStringCommand(File file) {
+void stringCommand(File file) {
   // While there's is still bytes available in the file keep reading
   bool bytesAvailable = true;
   while (bytesAvailable) {
@@ -168,28 +154,30 @@ void processStringCommand(File file) {
   } 
 }
 
-void processDelayCommand(File file) {
+void delayCommand(File file) {
   String delayString = readFile(file, ALL_END_CHARS); // Read until me encounter an end character
 
   int delayTime = delayString.toInt(); // Parse the delay time to an int
   delay(delayTime); // Wait
 }
 
-// void processLine(String line) {
-//   int spaceIndex = line.indexOf(SPACE_CHAR);
+void keystrokeCommand(String command, File file) {
+    String keystrokes = command + SPACE_CHAR + readFile(file, LINE_END_CHARS);
 
-//   // If a space exists this is a complex line (command + arguments, or set of keystrokes), otherwise it's a simple keystroke
-//   if (spaceIndex > -1) {
-//     String command = line.substring(0, spaceIndex);
-//     String argument = line.substring(spaceIndex + 1);
+    while (keystrokes != "") {
+      int spaceIndex = keystrokes.indexOf(SPACE_CHAR);
 
+      if (spaceIndex == -1) {
+        pressKey(keystrokes);
+        keystrokes = "";
+      } else {
+        pressKey(keystrokes.substring(0, spaceIndex));
+        keystrokes = keystrokes.substring(spaceIndex + 1);
+      }
 
-//   } else {
-//     pressKey(line);
-//   }
-
-//   Keyboard.releaseAll();
-// }
+      delay(5);
+    }
+}
 
 // TODO: Make this function more pretty
 // TODO: Use a switch statement instead of if statements?
@@ -200,33 +188,33 @@ void pressKey(String key) {
     Keyboard.press(character); // Press the character
   } else {
     if (key == "ENTER") Keyboard.press(KEY_RETURN);
-    if (key == "CTRL") Keyboard.press(KEY_LEFT_CTRL);
+    if (key == "CTRL" || key == "CONTROL") Keyboard.press(KEY_LEFT_CTRL);
     if (key == "SHIFT") Keyboard.press(KEY_LEFT_SHIFT);
     if (key == "ALT") Keyboard.press(KEY_LEFT_ALT);
-    if (key == "GUI") Keyboard.press(KEY_LEFT_GUI);
+    if (key == "GUI" || key == "WINDOWS") Keyboard.press(KEY_LEFT_GUI);
     if (key == "UP" || key == "UPARROW") Keyboard.press(KEY_UP_ARROW);
     if (key == "DOWN" || key == "DOWNARROW") Keyboard.press(KEY_DOWN_ARROW);
-    if (key == "LEFT" || key == "LEFTARROW")  Keyboard.press(KEY_LEFT_ARROW);
-    if (key == "RIGHT" || key == "RIGHTARROW")Keyboard.press(KEY_RIGHT_ARROW);
+    if (key == "LEFT" || key == "LEFTARROW") Keyboard.press(KEY_LEFT_ARROW);
+    if (key == "RIGHT" || key == "RIGHTARROW") Keyboard.press(KEY_RIGHT_ARROW);
     if (key == "DELETE") Keyboard.press(KEY_DELETE);
     if (key == "PAGEUP") Keyboard.press(KEY_PAGE_UP);
     if (key == "PAGEDOWN") Keyboard.press(KEY_PAGE_DOWN);
     if (key == "HOME") Keyboard.press(KEY_HOME);
-    if (key == "ESC")  Keyboard.press(KEY_ESC);
-    if (key == "INSERT")  Keyboard.press(KEY_INSERT);
+    if (key == "ESC") Keyboard.press(KEY_ESC);
+    if (key == "INSERT") Keyboard.press(KEY_INSERT);
     if (key == "TAB") Keyboard.press(KEY_TAB);
-    if (key == "END")Keyboard.press(KEY_END);
-    if (key == "CAPSLOCK")  Keyboard.press(KEY_CAPS_LOCK);
+    if (key == "END") Keyboard.press(KEY_END);
+    if (key == "CAPSLOCK") Keyboard.press(KEY_CAPS_LOCK);
     if (key == "F1") Keyboard.press(KEY_F1);
-    if (key == "F2")  Keyboard.press(KEY_F2);
-    if (key == "F3")  Keyboard.press(KEY_F3);
-    if (key == "F4")  Keyboard.press(KEY_F4);
-    if (key == "F5")  Keyboard.press(KEY_F5);
+    if (key == "F2") Keyboard.press(KEY_F2);
+    if (key == "F3") Keyboard.press(KEY_F3);
+    if (key == "F4") Keyboard.press(KEY_F4);
+    if (key == "F5") Keyboard.press(KEY_F5);
     if (key == "F6") Keyboard.press(KEY_F6);
     if (key == "F7") Keyboard.press(KEY_F7);
-    if (key == "F8")  Keyboard.press(KEY_F8);
+    if (key == "F8") Keyboard.press(KEY_F8);
     if (key == "F9") Keyboard.press(KEY_F9);
-    if (key == "F10")   Keyboard.press(KEY_F10);
+    if (key == "F10") Keyboard.press(KEY_F10);
     if (key == "F11") Keyboard.press(KEY_F11);
     if (key == "F12") Keyboard.press(KEY_F12);
   }
