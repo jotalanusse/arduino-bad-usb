@@ -1,6 +1,7 @@
 /*
  * Author: jotalanusse
  *         https://github.com/jotalanusse
+ * 
  * GIT:
  *         https://github.com/jotalanusse/arduino-bad-usb
  *
@@ -18,41 +19,42 @@
 #include <SPI.h>
 #include <string.h>
 
-// Constants
-const char NEWLINE_CHAR = '\n';
-const char CARRIAGE_RETURN_CHAR = '\r';
-const char SPACE_CHAR = ' ';
+// Characters
+const char NEWLINE_CHAR PROGMEM = '\n';
+const char CARRIAGE_RETURN_CHAR PROGMEM = '\r';
+const char SPACE_CHAR PROGMEM = ' ';
 
-const char COMMAND_END_CHARS[] = {SPACE_CHAR, NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
-const char LINE_END_CHARS[] = {NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
+// Character groups
+const char ALL_END_CHARS[] PROGMEM = {SPACE_CHAR, NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
+const char LINE_END_CHARS[] PROGMEM = {NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
 
-const int MAX_STRING_LENGTH = 1024;
 
-// Global variables
-const int pins[] = {5, 6, 7, 8, 9}; // Pins to be used as input
+// Configuration
+const int PINS[] PROGMEM = {5, 6, 7, 8, 9}; // Pins to be used as input
+const int MAX_STRING_LENGTH PROGMEM = 1024; // Maximum length of a string that can be read at once
+const char FILE_EXTENSION[] PROGMEM = ".txt"; // Extension of the payload files
 
-// The main function where the program is set up
 void setup() {
   int fileIndex = 0; // Index of the file to be read
 
   // Set up each pin as an input
-  for (int i = 0; i < sizeof(pins); i += 1) {
-    int pin = pins[i];
+  for (int i = 0; i < sizeof(PINS); i += 1) {
+    int pin = PINS[i];
     pinMode(pin, INPUT_PULLUP);
   }
 
   // If the pin is in a state of HIGH, we add to the index
-  for (int i = 0; i < sizeof(pins); i += 1) {
-    int pin = pins[i];
-    int pinWeight =  sizeof(pins) - i -1; // We have to subtract 1 because the for loop starts at 0
+  for (int i = 0; i < sizeof(PINS); i += 1) {
+    int pin = PINS[i];
+    int pinWeight =  sizeof(PINS) - i -1; // We have to subtract 1 because the for loop starts at 0 // TODO: Find a cleaner way to do this
 
     if (digitalRead(pin) == HIGH) {
-      fileIndex += pow(2, pinWeight);
+      fileIndex += pow(2, pinWeight); // Add to the index depending on the pin weight
     }
   }
 
   // Parse the index to a file name
-  String fileName = String(fileIndex) + ".txt"; // The file name is the index of the file to be read
+  String fileName = String(fileIndex) + FILE_EXTENSION; // The file name is the index of the file to be read
 
   // Start the SD card on pin 4
   if (!SD.begin(4)) {
@@ -115,9 +117,9 @@ String readFile(File file, char endCharacters[], int byteLimit = 0) {
 void processFile(File file) {
     // While there's is still bytes available in the file
     while (file.available()) {
-      String command = readFile(file, COMMAND_END_CHARS); // Read until me encounter one or more end characters
+      String command = readFile(file, ALL_END_CHARS); // Read until me encounter an end character
 
-      // Only process the command if it's not empty // TODO: Check if this is actually needed
+      // Only process the command if it's not empty
       if (command != "") {
         processCommand(command, file); // Process the command accordingly
       }
@@ -167,7 +169,7 @@ void processStringCommand(File file) {
 }
 
 void processDelayCommand(File file) {
-  String delayString = readFile(file, LINE_END_CHARS); // Read until me encounter an end character
+  String delayString = readFile(file, ALL_END_CHARS); // Read until me encounter an end character
 
   int delayTime = delayString.toInt(); // Parse the delay time to an int
   delay(delayTime); // Wait
