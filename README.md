@@ -104,7 +104,7 @@ The easiest way of knowing what combination to use is to have a list of all your
 - [ ] Add support for the **PRINTSCREEN** key.
 - [ ] Add schematic design for the circuit.
 
-## Legal
+## Legal:
 This project and all resources linked to it are provided for educational purposes only. I am not responsible for any damage that may occur to any or computer for the wrong usage of this project.
 
 Generally, scripts may execute commands on your device. As such, it is possible for a payload to damage your device. Scripts from this repository are provided AS-IS without warranty.
