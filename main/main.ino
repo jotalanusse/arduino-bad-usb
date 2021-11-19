@@ -1,7 +1,7 @@
 /*
  * Author: jotalanusse
  *         https://github.com/jotalanusse
- * 
+ *
  * GIT:
  *         https://github.com/jotalanusse/arduino-bad-usb
  *
@@ -19,204 +19,225 @@
 #include <SPI.h>
 #include <string.h>
 
-// Characters
-const char NEWLINE_CHAR PROGMEM = '\n';
-const char CARRIAGE_RETURN_CHAR PROGMEM = '\r';
-const char SPACE_CHAR PROGMEM = ' ';
-
 // Character groups
-const char ALL_END_CHARS[] PROGMEM = {SPACE_CHAR, NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
-const char LINE_END_CHARS[] PROGMEM = {NEWLINE_CHAR, CARRIAGE_RETURN_CHAR};
-
+const char ALL_END_CHARS[] PROGMEM = {' ', '\n', '\r'};
+const char LINE_END_CHARS[] PROGMEM = {'\n', '\r'};
 
 // Configuration
-const int PINS[] PROGMEM = {5, 6, 7, 8, 9}; // Pins to be used as input
-const int MAX_STRING_LENGTH PROGMEM = 1024; // Maximum length of a string that can be read at once
-const char FILE_EXTENSION[] PROGMEM = ".txt"; // Extension of the payload files
+const int PINS[] PROGMEM = {5, 6, 7, 8, 9};
+const int MAX_STRING_READ_LENGTH PROGMEM = 1024;
+const char FILE_EXTENSION[] PROGMEM = ".txt";
 
 void setup() {
-  int fileIndex = 0; // Index of the file to be read
+  int fileIndex = 0;
 
   // Set up each pin as an input
   for (int i = 0; i < sizeof(PINS); i += 1) {
     int pin = PINS[i];
+
     pinMode(pin, INPUT_PULLUP);
   }
 
   // If the pin is in a state of HIGH, we add to the index
   for (int i = 0; i < sizeof(PINS); i += 1) {
     int pin = PINS[i];
-    int pinWeight =  sizeof(PINS) - i -1; // We have to subtract 1 because the for loop starts at 0 // TODO: Find a cleaner way to do this
+    int pinWeight = sizeof(PINS) - i - 1; // TODO: Find a cleaner way to do this
 
     if (digitalRead(pin) == HIGH) {
-      fileIndex += pow(2, pinWeight); // Add to the index depending on the pin weight
+      fileIndex += pow(2, pinWeight); // Calculate the pin's weight
     }
   }
 
   // Parse the index to a file name
-  String fileName = String(fileIndex) + FILE_EXTENSION; // The file name is the index of the file to be read
+  String fileName = String(fileIndex) + FILE_EXTENSION;
 
   // Start the SD card on pin 4
   if (!SD.begin(4)) {
     return; // If the SD card fails to start, we exit
   }
 
-  // Open the script file
   File file = SD.open(fileName);
-
-  // If the file exist, process it
   if (file) {
-    Keyboard.begin(); // Start the keyboard for sending keystrokes
+    Keyboard.begin();
 
-    processFile(file); // Start processing the file
+    processFile(file);
     file.close();
 
-    Keyboard.end(); // End the keyboard
+    Keyboard.end();
   }
 }
 
 // Read a file until and end character is found or a byte limit is reached
 String readFile(File file, char endCharacters[], int byteLimit = 0) {
-    String result = ""; // The result of our read operation
+  String result = ""; // The result of our read operation
 
-    // While there's is still bytes available in the file
-    while (file.available()) {
-      // This is rather confusing, but let me explain.
-      // By using "read()" instead of "peek()" we still
-      // don't know if the character is an end character
-      // or not, but the reader header moves by one byte
-      // anyway.
-      //  
-      // So any end character is unintentionally avoided
-      // from being returned not only from the current
-      // read operation, but also from the next one.
-      char character = file.read(); // Read the next character
+  // While there's is still bytes available in the file
+  while (file.available()) {
+    // This is rather confusing, but let me explain.
+    // By using "read()" instead of "peek()" we still
+    // don't know if the character is an end character
+    // or not, but the reader header moves by one byte
+    // anyway.
+    //
+    // So any end character is unintentionally avoided
+    // from being returned not only from the current
+    // read operation, but also from the next one.
+    char character = file.read(); // Read the next character
 
-      // If the character is not present in our end characters array
-      for (int i = 0; i < sizeof(endCharacters); i += 1) {
-        char endCharacter = endCharacters[i]; // Thee current end character we want to compare
+    // If the character is not present in our end characters array
+    for (int i = 0; i < sizeof(endCharacters); i += 1) {
+      char endCharacter =
+          endCharacters[i]; // Thee current end character we want to compare
 
-        // If the character is an end character we return our current result
-        if (character == endCharacter) {
-           return result;
-        }
-      }
-
-      result += character; // Add the character to our result and keep going
-
-      // If we've reached our byte limit for our read operation return the result
-      if (result.length() == byteLimit) {
+      // If the character is an end character we return our current result
+      if (character == endCharacter) {
         return result;
       }
     }
 
-    return result; // Finally return the result
+    result += character; // Add the character to our result and keep going
+
+    // If we've reached our byte limit for our read operation return the result
+    if (result.length() == byteLimit) {
+      return result;
+    }
+  }
+
+  return result; // Finally return the result
 }
 
 // Read a file and process the commands it contains
 void processFile(File file) {
-    // While there's is still bytes available in the file
-    while (file.available()) {
-      String command = readFile(file, ALL_END_CHARS); // Read until me encounter an end character
+  while (file.available()) {
+    String command = readFile(file, ALL_END_CHARS);
 
-      // Only process the command if it's not empty
-      if (command != "") {
-        processCommand(command, file); // Process the command accordingly
-      }
+    if (command != "") {
+      processCommand(command, file);
     }
+  }
 }
 
 void processCommand(String command, File file) {
-  if (command == "REM") { // This is a comment, so we just ignore it
+  if (command == F("REM")) { // This is a comment, so we just ignore it
     // Hello there!
-  } else  if (command ==  "STRING") { // This will send a string of text as ke]yboard input
+  } else if (command == F("STRING")) { // Send a string of text to the keyboard
     stringCommand(file);
-  } else if (command ==  "DELAY") { // This will delay the script for a certain amount of time
+  } else if (command == F("DELAY")) { // Delay the script for x milliseconds
     delayCommand(file);
-  } else { // This is a single keystroke, or a set of keystrokes we have to chain together
+  } else { // Single keystroke, or a set of keystrokes
     keystrokeCommand(command, file);
   }
 }
 
-// Process the string command by converting the string set of keyboard inputs
+// Convert the string into a set of keystrokes
 void stringCommand(File file) {
-  // While there's is still bytes available in the file keep reading
   bool bytesAvailable = true;
   while (bytesAvailable) {
-    String string = readFile(file, LINE_END_CHARS, MAX_STRING_LENGTH); // Read until me encounter an end character or we reach the byte limit
+    String string = readFile(file, LINE_END_CHARS, MAX_STRING_READ_LENGTH);
 
-    // If the string is not empty, we still have things to process
     if (string != "") {
-      Keyboard.print(string); // Send the string to the keyboard
+      Keyboard.print(string);
     } else {
-      bytesAvailable = false; // There are no bytes left
+      bytesAvailable = false;
     }
-  } 
+  }
 }
 
+// Delay the script for x milliseconds
 void delayCommand(File file) {
-  String delayString = readFile(file, ALL_END_CHARS); // Read until me encounter an end character
+  String delayString = readFile(file, ALL_END_CHARS);
 
-  int delayTime = delayString.toInt(); // Parse the delay time to an int
-  delay(delayTime); // Wait
+  int delayTime = delayString.toInt();
+  delay(delayTime);
 }
 
+// Convert the string into a combination of keystrokes
 void keystrokeCommand(String command, File file) {
-    String keystrokes = command + SPACE_CHAR + readFile(file, LINE_END_CHARS);
+  String keystrokes = command + ' ' + readFile(file, LINE_END_CHARS);
 
-    while (keystrokes != "") {
-      int spaceIndex = keystrokes.indexOf(SPACE_CHAR);
+  while (keystrokes != "") {
+    int spaceIndex = keystrokes.indexOf(' ');
 
-      if (spaceIndex == -1) {
-        pressKey(keystrokes);
-        keystrokes = "";
-      } else {
-        pressKey(keystrokes.substring(0, spaceIndex));
-        keystrokes = keystrokes.substring(spaceIndex + 1);
-      }
-
-      delay(5);
+    if (spaceIndex == -1) {
+      pressKey(keystrokes);
+      keystrokes = "";
+    } else {
+      pressKey(keystrokes.substring(0, spaceIndex));
+      keystrokes = keystrokes.substring(spaceIndex + 1);
     }
+
+    delay(5);
+  }
+
+  Keyboard.releaseAll();
 }
 
 // TODO: Make this function more pretty
-// TODO: Use a switch statement instead of if statements?
 void pressKey(String key) {
-  // Check if the key is a simple or special key
   if (key.length() == 1) {
-    char character = key.charAt(0); // Get the character
-    Keyboard.press(character); // Press the character
+    char character = key.charAt(0);
+    Keyboard.press(character);
   } else {
-    if (key == "ENTER") Keyboard.press(KEY_RETURN);
-    if (key == "CTRL" || key == "CONTROL") Keyboard.press(KEY_LEFT_CTRL);
-    if (key == "SHIFT") Keyboard.press(KEY_LEFT_SHIFT);
-    if (key == "ALT") Keyboard.press(KEY_LEFT_ALT);
-    if (key == "GUI" || key == "WINDOWS") Keyboard.press(KEY_LEFT_GUI);
-    if (key == "UP" || key == "UPARROW") Keyboard.press(KEY_UP_ARROW);
-    if (key == "DOWN" || key == "DOWNARROW") Keyboard.press(KEY_DOWN_ARROW);
-    if (key == "LEFT" || key == "LEFTARROW") Keyboard.press(KEY_LEFT_ARROW);
-    if (key == "RIGHT" || key == "RIGHTARROW") Keyboard.press(KEY_RIGHT_ARROW);
-    if (key == "DELETE") Keyboard.press(KEY_DELETE);
-    if (key == "PAGEUP") Keyboard.press(KEY_PAGE_UP);
-    if (key == "PAGEDOWN") Keyboard.press(KEY_PAGE_DOWN);
-    if (key == "HOME") Keyboard.press(KEY_HOME);
-    if (key == "ESC") Keyboard.press(KEY_ESC);
-    if (key == "INSERT") Keyboard.press(KEY_INSERT);
-    if (key == "TAB") Keyboard.press(KEY_TAB);
-    if (key == "END") Keyboard.press(KEY_END);
-    if (key == "CAPSLOCK") Keyboard.press(KEY_CAPS_LOCK);
-    if (key == "F1") Keyboard.press(KEY_F1);
-    if (key == "F2") Keyboard.press(KEY_F2);
-    if (key == "F3") Keyboard.press(KEY_F3);
-    if (key == "F4") Keyboard.press(KEY_F4);
-    if (key == "F5") Keyboard.press(KEY_F5);
-    if (key == "F6") Keyboard.press(KEY_F6);
-    if (key == "F7") Keyboard.press(KEY_F7);
-    if (key == "F8") Keyboard.press(KEY_F8);
-    if (key == "F9") Keyboard.press(KEY_F9);
-    if (key == "F10") Keyboard.press(KEY_F10);
-    if (key == "F11") Keyboard.press(KEY_F11);
-    if (key == "F12") Keyboard.press(KEY_F12);
+    if (key == F("ENTER"))
+      Keyboard.press(KEY_RETURN);
+    if (key == F("CTRL") || key == F("CONTROL"))
+      Keyboard.press(KEY_LEFT_CTRL);
+    if (key == F("SHIFT"))
+      Keyboard.press(KEY_LEFT_SHIFT);
+    if (key == F("ALT"))
+      Keyboard.press(KEY_LEFT_ALT);
+    if (key == F("GUI") || key == F("WINDOWS"))
+      Keyboard.press(KEY_LEFT_GUI);
+    if (key == F("UP") || key == F("UPARROW"))
+      Keyboard.press(KEY_UP_ARROW);
+    if (key == F("DOWN") || key == F("DOWNARROW"))
+      Keyboard.press(KEY_DOWN_ARROW);
+    if (key == F("LEFT") || key == F("LEFTARROW"))
+      Keyboard.press(KEY_LEFT_ARROW);
+    if (key == F("RIGHT") || key == F("RIGHTARROW"))
+      Keyboard.press(KEY_RIGHT_ARROW);
+    if (key == F("DELETE"))
+      Keyboard.press(KEY_DELETE);
+    if (key == F("PAGEUP"))
+      Keyboard.press(KEY_PAGE_UP);
+    if (key == F("PAGEDOWN"))
+      Keyboard.press(KEY_PAGE_DOWN);
+    if (key == F("HOME"))
+      Keyboard.press(KEY_HOME);
+    if (key == F("ESC"))
+      Keyboard.press(KEY_ESC);
+    if (key == F("INSERT"))
+      Keyboard.press(KEY_INSERT);
+    if (key == F("TAB"))
+      Keyboard.press(KEY_TAB);
+    if (key == F("END"))
+      Keyboard.press(KEY_END);
+    if (key == F("CAPSLOCK"))
+      Keyboard.press(KEY_CAPS_LOCK);
+    if (key == F("F1"))
+      Keyboard.press(KEY_F1);
+    if (key == F("F2"))
+      Keyboard.press(KEY_F2);
+    if (key == F("F3"))
+      Keyboard.press(KEY_F3);
+    if (key == F("F4"))
+      Keyboard.press(KEY_F4);
+    if (key == F("F5"))
+      Keyboard.press(KEY_F5);
+    if (key == F("F6"))
+      Keyboard.press(KEY_F6);
+    if (key == F("F7"))
+      Keyboard.press(KEY_F7);
+    if (key == F("F8"))
+      Keyboard.press(KEY_F8);
+    if (key == F("F9"))
+      Keyboard.press(KEY_F9);
+    if (key == F("F10"))
+      Keyboard.press(KEY_F10);
+    if (key == F("F11"))
+      Keyboard.press(KEY_F11);
+    if (key == F("F12"))
+      Keyboard.press(KEY_F12);
   }
 }
 
