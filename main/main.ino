@@ -21,20 +21,28 @@
 #include <SPI.h>
 #include <string.h>
 
-// Character groups
+// CHARACTER GROUPS:
 const char ALL_END_CHARS[] PROGMEM = {'-', ' ', '\n', '\r'};
 const char LINE_END_CHARS[] PROGMEM = {'\n', '\r'};
 
-// Configuration
+// CONFIGURATION:
+// Pins
 const int SD_PIN PROGMEM = 4;
 const int PINS[] PROGMEM = {5, 6, 7, 8, 9};
+
+// Files
 const int MAX_READ_LENGTH PROGMEM = 1024;
 const char FILE_EXTENSION[] PROGMEM = ".txt";
 
-// Structs
+// Delays
+const int INITIAL_DELAY PROGMEM = 800;
+int DEFUALT_COMMAND_DELAY = 0;
+const int KEYSTROKE_COMBOS_DELAY PROGMEM = 5;
+
+// STRUCTS:
 struct ReadResult {
-  String result = "";// TODO: CHeck if this even works
-  char endChar = ""; // TODO: Chek if this can be an empty char
+  String result = ""; // TODO: CHeck if this even works
+  char endChar = "";  // TODO: Chek if this can be an empty char
   bool byteLimitReached = false;
 };
 
@@ -66,9 +74,12 @@ void setup() {
     return; // If the SD card fails to start, we exit
   }
 
+  // OPen the SD file and get to work
   File file = SD.open(fileName);
   if (file) {
     Keyboard.begin();
+
+    delay(INITIAL_DELAY); // Wait for the keyboard to initialize
 
     processFile(file);
     file.close();
@@ -114,53 +125,64 @@ void processFile(File file) {
     ReadResult readResult = readFile(file, ALL_END_CHARS);
     String command = readResult.result;
 
-    if (command == F("REM")) {
-      /*
-       * REM: The REM command is used to comment out a line of code,
-       * so when we parse the script we just ignore it's content. This
-       * can be helpfull to document the script, and make it easier to
-       * read.
-       */
+    if (command != "") {
+      delay(DEFUALT_COMMAND_DELAY); // Default delay between commands
 
-      // TODO: Read comment until end of line
-    } else if (command == F("STRING")) {
-      /*
-       * STRING: The STRING command is used to read a piece of text
-       * from the script file, and send it as individual keystrokes to
-       * the target computer. This is used to open links, programs,
-       * execute commands, or even write secripts on the go.
-       */
+      if (command == F("REM")) {
+        /*
+         * REM: The REM command is used to comment out a line of code,
+         * so when we parse the script we just ignore it's content. This
+         * can be helpfull to document the script, and make it easier to
+         * read.
+         */
 
-      stringCommand(file);
-    } else if (command == F("DELAY")) {
-      /*
-       * DELAY: The DELAY command works by waiting for a certain
-       * amount  of time (specified in milliseconds) before continuing
-       * with the script. This can be used to slow down the script,
-       * and thats' useful when waiting for GUI operations to complete.
-       * Like menus, or prompts.
-       */
+        // TODO: Read comment until end of line
+      } else if (command == F("STRING") || command == F("STR")) {
+        /*
+         * STRING: The STRING command is used to read a piece of text
+         * from the script file, and send it as individual keystrokes to
+         * the target computer. This is used to open links, programs,
+         * execute commands, or even write secripts on the go.
+         */
 
-      delayCommand(file);
-    } else {
-      /*
-       * KEYSTROKES: Finally we have the keystrokes command, which is
-       * not actually a command, but a keystroke itself (SHIFT, CTRL, f).
-       * We use this to navigate through the GUI to get where we want to,
-       * almost every keystroke can be simulated, which gives us a lot of
-       * flexibility.
-       */
+        stringCommand(file);
+      } else if (command == F("DELAY")) {
+        /*
+         * DELAY: The DELAY command works by waiting for a certain
+         * amount  of time (specified in milliseconds) before continuing
+         * with the script. This can be used to slow down the script,
+         * and thats' useful when waiting for GUI operations to complete.
+         * Like menus, or prompts.
+         */
 
-      // Rewind the file to the start of the command because in this case
-      // the argument is the command itself
-      file.seek(file.position() - command.length());
+        delayCommand(file);
+      } else if (command == F("DEFAULT_DELAY") || command == F("DEFAULTDELAY")) {
+        /*
+         * DEFAULT_DELAY: The DEFAULT_DELAY command specifies the default
+         * amount of time (in milliseconds) to wait before performing
+         * each subsequent command. A lower value will result in a faster
+         * execution, this command is mostly useful for debugging.
+         */
 
-      keystrokeCommand(file);
+        defaultDelayCommand(file);
+      } else {
+        /*
+         * KEYSTROKES: Finally we have the keystrokes command, which is
+         * not actually a command, but a keystroke itself (SHIFT, CTRL, f).
+         * We use this to navigate through the GUI to get where we want to,
+         * almost every keystroke can be simulated, which gives us a lot of
+         * flexibility.
+         */
+
+        // Rewind the file to the start of the command because in this case
+        // the argument is the command itself
+        file.seek(file.position() - command.length());
+
+        keystrokeCommand(file);
+      }
     }
   }
 }
-
-void processCommand(String command, File file) {}
 
 // Convert the string into a set of keystrokes
 void stringCommand(File file) {
@@ -190,6 +212,16 @@ void delayCommand(File file) {
   delay(delayTime);
 }
 
+// Delay the script for x milliseconds before each command
+void defaultDelayCommand(File file) {
+  ReadResult readResult = readFile(file, ALL_END_CHARS);
+
+  String delayString = readResult.result;
+  int delayTime = delayString.toInt();
+
+  DEFUALT_COMMAND_DELAY = delayTime;
+}
+
 // Convert the string into a combination of keystrokes
 void keystrokeCommand(File file) {
   bool keystrokesAvailable = true;
@@ -206,7 +238,7 @@ void keystrokeCommand(File file) {
       keystrokesAvailable = false;
     }
 
-    delay(5); // TODO: Replace with configurable delay
+    delay(KEYSTROKE_COMBOS_DELAY);
   }
 
   Keyboard.releaseAll();
