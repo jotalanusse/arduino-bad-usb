@@ -14,14 +14,6 @@
  *         https://www.youtube.com/seytonic
  */
 
-// TODO: Migrate to NicoHood HID
-// TODO: Support hyphens between keystroke combinations
-// TODO: Add numberpad support
-// TODO: Add default delay between keystrokes command
-// TODO: Add PRINTSCREEN support
-// TODO: Add initial delay configuration
-// TODO: Make the file variable global
-
 // #include <HID-Settings.h>
 // #include <HID-Project.h>
 #include <Keyboard.h>
