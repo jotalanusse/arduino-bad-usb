@@ -22,14 +22,21 @@
 #include <string.h>
 
 // Character groups
-const char ALL_END_CHARS[] PROGMEM = {' ', '\n', '\r'};
+const char ALL_END_CHARS[] PROGMEM = {'-', ' ', '\n', '\r'};
 const char LINE_END_CHARS[] PROGMEM = {'\n', '\r'};
 
 // Configuration
 const int SD_PIN PROGMEM = 4;
 const int PINS[] PROGMEM = {5, 6, 7, 8, 9};
-const int MAX_STRING_READ_LENGTH PROGMEM = 1024;
+const int MAX_READ_LENGTH PROGMEM = 1024;
 const char FILE_EXTENSION[] PROGMEM = ".txt";
+
+// Structs
+struct ReadResult {
+  String result = "";// TODO: CHeck if this even works
+  char endChar = ""; // TODO: Chek if this can be an empty char
+  bool byteLimitReached = false;
+};
 
 void setup() {
   int fileIndex = 0;
@@ -71,76 +78,103 @@ void setup() {
 }
 
 // Read a file until and end character is found or a byte limit is reached
-String readFile(File file, char endCharacters[], int byteLimit = 0) {
-  String result = ""; // The result of our read operation
+ReadResult readFile(File file, char endCharacters[], int byteLimit = 0) {
+  ReadResult readResult;
 
-  // While there's is still bytes available in the file
   while (file.available()) {
-    // This is rather confusing, but let me explain.
-    // By using "read()" instead of "peek()" we still
-    // don't know if the character is an end character
-    // or not, but the reader header moves by one byte
-    // anyway.
-    //
-    // So any end character is unintentionally avoided
-    // from being returned not only from the current
-    // read operation, but also from the next one.
-    char character = file.read(); // Read the next character
+    char character = file.read();
 
-    // If the character is not present in our end characters array
+    // If the character is present in our end characters array
     for (int i = 0; i < sizeof(endCharacters); i += 1) {
-      char endCharacter =
-          endCharacters[i]; // Thee current end character we want to compare
+      char endChar = endCharacters[i];
 
-      // If the character is an end character we return our current result
-      if (character == endCharacter) {
-        return result;
+      if (character == endChar) {
+        readResult.endChar = endChar;
+
+        return readResult;
       }
     }
 
-    result += character; // Add the character to our result and keep going
+    readResult.result += character;
 
     // If we've reached our byte limit for our read operation return the result
-    if (result.length() == byteLimit) {
-      return result;
+    if (readResult.result.length() == byteLimit) {
+      readResult.byteLimitReached = true;
+
+      return readResult;
     }
   }
 
-  return result; // Finally return the result
+  return readResult;
 }
 
 // Read a file and process the commands it contains
 void processFile(File file) {
   while (file.available()) {
-    String command = readFile(file, ALL_END_CHARS);
+    ReadResult readResult = readFile(file, ALL_END_CHARS);
+    String command = readResult.result;
 
-    if (command != "") {
-      processCommand(command, file);
+    if (command == F("REM")) {
+      /*
+       * REM: The REM command is used to comment out a line of code,
+       * so when we parse the script we just ignore it's content. This
+       * can be helpfull to document the script, and make it easier to
+       * read.
+       */
+
+      // TODO: Read comment until end of line
+    } else if (command == F("STRING")) {
+      /*
+       * STRING: The STRING command is used to read a piece of text
+       * from the script file, and send it as individual keystrokes to
+       * the target computer. This is used to open links, programs,
+       * execute commands, or even write secripts on the go.
+       */
+
+      stringCommand(file);
+    } else if (command == F("DELAY")) {
+      /*
+       * DELAY: The DELAY command works by waiting for a certain
+       * amount  of time (specified in milliseconds) before continuing
+       * with the script. This can be used to slow down the script,
+       * and thats' useful when waiting for GUI operations to complete.
+       * Like menus, or prompts.
+       */
+
+      delayCommand(file);
+    } else {
+      /*
+       * KEYSTROKES: Finally we have the keystrokes command, which is
+       * not actually a command, but a keystroke itself (SHIFT, CTRL, f).
+       * We use this to navigate through the GUI to get where we want to,
+       * almost every keystroke can be simulated, which gives us a lot of
+       * flexibility.
+       */
+
+      // Rewind the file to the start of the command because in this case
+      // the argument is the command itself
+      file.seek(file.position() - command.length());
+
+      keystrokeCommand(file);
     }
   }
 }
 
-void processCommand(String command, File file) {
-  if (command == F("REM")) { // This is a comment, so we just ignore it
-    // Hello there!
-  } else if (command == F("STRING")) { // Send a string of text to the keyboard
-    stringCommand(file);
-  } else if (command == F("DELAY")) { // Delay the script for x milliseconds
-    delayCommand(file);
-  } else { // Single keystroke, or a set of keystrokes
-    keystrokeCommand(command, file);
-  }
-}
+void processCommand(String command, File file) {}
 
 // Convert the string into a set of keystrokes
 void stringCommand(File file) {
   bool bytesAvailable = true;
   while (bytesAvailable) {
-    String string = readFile(file, LINE_END_CHARS, MAX_STRING_READ_LENGTH);
+    ReadResult readResult = readFile(file, LINE_END_CHARS, MAX_READ_LENGTH);
 
-    if (string != "") {
-      Keyboard.print(string);
-    } else {
+    String string = readResult.result;
+    char endChar = readResult.endChar;
+
+    Keyboard.print(string);
+
+    // If the read operation ended with an end character we stop
+    if (endChar != "") { // TODO: Check if this can be an empty char
       bytesAvailable = false;
     }
   }
@@ -148,28 +182,31 @@ void stringCommand(File file) {
 
 // Delay the script for x milliseconds
 void delayCommand(File file) {
-  String delayString = readFile(file, ALL_END_CHARS);
+  ReadResult readResult = readFile(file, ALL_END_CHARS);
 
+  String delayString = readResult.result;
   int delayTime = delayString.toInt();
+
   delay(delayTime);
 }
 
 // Convert the string into a combination of keystrokes
-void keystrokeCommand(String command, File file) {
-  String keystrokes = command + ' ' + readFile(file, LINE_END_CHARS);
+void keystrokeCommand(File file) {
+  bool keystrokesAvailable = true;
+  while (keystrokesAvailable) {
+    ReadResult readResult = readFile(file, ALL_END_CHARS);
 
-  while (keystrokes != "") {
-    int spaceIndex = keystrokes.indexOf(' ');
+    String key = readResult.result;
+    char endChar = readResult.endChar;
 
-    if (spaceIndex == -1) {
-      pressKey(keystrokes);
-      keystrokes = "";
-    } else {
-      pressKey(keystrokes.substring(0, spaceIndex));
-      keystrokes = keystrokes.substring(spaceIndex + 1);
+    pressKey(key);
+
+    // TODO: Use a for loop to iterate through the line end characters?
+    if (endChar == '\n' || endChar == '\r') {
+      keystrokesAvailable = false;
     }
 
-    delay(5);
+    delay(5); // TODO: Replace with configurable delay
   }
 
   Keyboard.releaseAll();
@@ -178,7 +215,7 @@ void keystrokeCommand(String command, File file) {
 // TODO: Make this function more pretty
 void pressKey(String key) {
   if (key.length() == 1) {
-    char character = key.charAt(0);
+    char character = key.charAt(0); // TODO: Use [] instead?
     Keyboard.press(character);
   } else {
     if (key == F("ENTER"))

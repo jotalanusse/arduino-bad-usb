@@ -39,7 +39,7 @@ Once again there is no specific DIP switch that has to be used, actually you don
 </p>
 
 ## Setup:
-TODO
+### Connection:
 
 ## TODO:
 **Disclaimer:** This project is in a very early stage so there are a lot of things to get done, lot's of things may change during development and that's okay. But for now this are the things that need to be edited/added at the moment:
@@ -47,6 +47,7 @@ TODO
 - [ ] Migrate to the **NicoHood HID** library.
 - [ ] Add number pad support.
 - [ ] Add support for the **DEFAULT_DELAY** command.
-- [ ] Add an initial delay for every script to avoid errors
+- [ ] Add an initial delay for every script to avoid errors.
 - [ ] Add support for the **PRINTSCREEN** key.
-- [ ] Change how the script file variable is accessed
+- [ ] Change how the script file variable is accessed.
+- [ ] Add schematic design for the circuit.
