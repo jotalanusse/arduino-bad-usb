@@ -14,7 +14,15 @@
  *         https://www.youtube.com/seytonic
  */
 
-#include "Keyboard.h"
+// TODO: Support hyphens between keystroke combinations
+// TODO: Add numberpad support
+// TODO: Add default delay between keystrokes command
+// TODO: Add PRINTSCREEN support
+// TODO: Add initial delay configuration
+
+// #include <HID-Settings.h>
+// #include <HID-Project.h>
+#include <Keyboard.h>
 #include <SD.h>
 #include <SPI.h>
 #include <string.h>
@@ -186,7 +194,7 @@ void pressKey(String key) {
       Keyboard.press(KEY_LEFT_SHIFT);
     if (key == F("ALT"))
       Keyboard.press(KEY_LEFT_ALT);
-    if (key == F("GUI") || key == F("WINDOWS"))
+    if (key == F("GUI") || key == F("WINDOWS") || F("WIN"))
       Keyboard.press(KEY_LEFT_GUI);
     if (key == F("UP") || key == F("UPARROW"))
       Keyboard.press(KEY_UP_ARROW);
