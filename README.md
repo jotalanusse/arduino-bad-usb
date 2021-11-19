@@ -18,13 +18,19 @@ There are 3 basic components required for this project:
 
  For this particular implementation the [Pro Micro - 5V/16MHz](https://www.sparkfun.com/products/12640) from SparkFun is used, featuring an 8-bit ATmega32U4 and Arduino support out of the box. The original board can get quite expensive, so I recommend getting a third party implementation from AliExpress for a fraction of the cost (~$6).
 
+![SparkFun Pro Micro - 5V/16MHz](./img/pro-micro.png)
+
 **Micro SD module:** Our micro SD card module will be used to store our different scripts, this saves us from having to reprogram/reupload our code into the Arduino every time we want to modify our script/s.
 
 There's no specific micro SD card module that has to be used for it to work with our board, just make sure that it is Arduino compatible (it has to support the SPI communication protocol), but most manufacturers will simply specify that it works with Arduino in the product description. These modules are also sold in AliExpress for a very low cost (~$0.45)
 
+![Micro SD card reader module](./img/sd-module.png)
+
 **DIP switch:** The DIP switch is what will enable us to select our script from the variety of payloads stored in our SD without the need of having to edit our code to do so.
 
 Once again there is no specific DIP switch that has to be used, actually you don't even have to use a DIP switch at all. You could use a combination of individual switches and put them together, but given that we want to minimize the size of our USB I recommend getting one. These switches are also available in AliExpress at a very low cost (~$1) for 5 switches.
+
+![DIP switch of 10 positions](./img/dip-switch.png)
 
 ## Setup:
 TODO
