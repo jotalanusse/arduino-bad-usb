@@ -80,7 +80,7 @@ Binary is simply another way of encoding numbers, it's a way of representing num
 
 As shown previously, every file will have a name from `00001` to `11111`. These numbers are actually the binary representation of numbers `1` up to `31`. But because our DIP switch only understands `0` or `1` we need to work with numbers in this format.
 
-The goal of this section is not to teach you in-depth how binary numbers work, but to demonstrate why this approach is the best one to use. You don't even need to know binary to operate the DIP switch.
+The goal of this section is not to teach you in-depth how binary numbers work, but to demonstrate why this approach is the best one to use. You don't even need to know binary to operate the DIP switch, but if you want to learn more about it, you can find it here: [Binary numbers](https://en.wikipedia.org/wiki/Binary_number).
 
 The easiest way of knowing what combination to use is to have a list of all your scripts and their DIP switch combination (which is alfo their filename). Then you simply put the different switches into position (`0` or `1`) and when you connect your BadUSB, the Arduino will take care of the rest.
 
@@ -91,7 +91,6 @@ The easiest way of knowing what combination to use is to have a list of all your
 ...
 11111 -> Hotdog Wallpaper
 ```
-
 
 ## TODO:
 **Disclaimer:** This project is in a very early stage so there are a lot of things to get done, lot's of things may change during development and that's okay. But for now this are the things that need to be edited/added at the moment:
@@ -104,3 +103,8 @@ The easiest way of knowing what combination to use is to have a list of all your
 - [ ] Add number pad support.
 - [ ] Add support for the **PRINTSCREEN** key.
 - [ ] Add schematic design for the circuit.
+
+## Legal
+This project and all resources linked to it are provided for educational purposes only. I am not responsible for any damage that may occur to any or computer for the wrong usage of this project.
+
+Generally, scripts may execute commands on your device. As such, it is possible for a payload to damage your device. Scripts from this repository are provided AS-IS without warranty.
