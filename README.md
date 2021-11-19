@@ -1,6 +1,6 @@
 
 # Arduino BadUSB
-A **Ducky Script** interpreter that runs on an **Arduino**, decodes and executes scripts saved on a **microSD** card.
+A **Ducky Script** interpreter that runs on an **Arduino**, decodes and executes scripts saved on a **micro SD** card.
 
 The goal of this project is to recreate an affordable and DIY alternative to the legendary [Rubber Ducky](https://hak5.org/products/usb-rubber-ducky-deluxe) from Hak5. Ideally capable of executing most if not all Ducky Script payloads already available out there, without the need of parsing/converting them beforehand.
 
@@ -72,16 +72,20 @@ The SD card should look something like this:
 ```
 
 ## Usage:
+
+### What now?:
 Once everything is set up, you can now start using your new BadUSB! But how?
 
 Until now we've been talking about the DIP switch and how it will allow us to select from a variety of scripts on the go, but how do we actually use it? The answer is binary!
 
+### Binary:
 Binary is simply another way of encoding numbers, it's a way of representing numbers using only `0` and `1`. If you are familiar with the binary system, you will have no problem understanding how this will help us to select our scripts.
 
 As shown previously, every file will have a name from `00001` to `11111`. These numbers are actually the binary representation of numbers `1` up to `31`. But because our DIP switch only understands `0` or `1` we need to work with numbers in this format.
 
 The goal of this section is not to teach you in-depth how binary numbers work, but to demonstrate why this approach is the best one to use. You don't even need to know binary to operate the DIP switch, but if you want to learn more about it, you can find it here: [Binary numbers](https://en.wikipedia.org/wiki/Binary_number).
 
+### Tips:
 The easiest way of knowing what combination to use is to have a list of all your scripts and their DIP switch combination (which is alfo their filename). Then you simply put the different switches into position (`0` or `1`) and when you connect your BadUSB, the Arduino will take care of the rest.
 
 ```
@@ -92,12 +96,17 @@ The easiest way of knowing what combination to use is to have a list of all your
 11111 -> Hotdog Wallpaper
 ```
 
+### Disarmed mode:
+You might be wondering how do you even work on your BadUSB's code without becoming a victim of your own payloads, well there is a solution for that.
+
+When the DIP switch is in it's initial position `00000` no script will be executed and the Arduino will simply stay in standby, allowing you to safely connect the BadUSB to your own system without causing any unintentional damage.
+
 ## TODO:
 **Disclaimer:** This project is in a very early stage so there are a lot of things to get done, lot's of things may change during development and that's okay. But for now this are the things that need to be edited/added at the moment:
 
 - [X] Add support for the **DEFAULT_DELAY** command.
 - [X] Add an initial delay for every script to avoid errors.
-- [ ] First DIP switch position combination should be a "safe mode"
+- [X] First DIP switch combination should be a "disarmed mode"
 - [ ] Allow more user-friendly script names.
 - [ ] Migrate to the **NicoHood HID** library.
 - [ ] Add number pad support.

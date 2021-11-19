@@ -47,7 +47,7 @@ struct ReadResult {
 };
 
 void setup() {
-  int fileIndex = 0;
+  String fileName = "";
 
   // Set up each pin as an input
   for (int i = 0; i < sizeof(PINS); i += 1) {
@@ -56,18 +56,24 @@ void setup() {
     pinMode(pin, INPUT_PULLUP);
   }
 
-  // If the pin is in a state of HIGH, we add to the index
+  // Check pins for their state and add it to the file name
   for (int i = 0; i < sizeof(PINS); i += 1) {
     int pin = PINS[i];
-    int pinWeight = sizeof(PINS) - i - 1; // TODO: Find a cleaner way to do this
 
     if (digitalRead(pin) == HIGH) {
-      fileIndex += pow(2, pinWeight); // Calculate the pin's weight
+      fileName += "1";
+    } else {
+      fileName += "0";
     }
   }
 
-  // Parse the index to a file name
-  String fileName = String(fileIndex) + FILE_EXTENSION;
+  // Check if our combination contains a 1
+  int indexOfOne = fileName.indexOf("1");
+
+  // If it doesn't, we must exit the program (disarmed mode)
+  if (indexOfOne != -1) {
+    return;
+  }
 
   // Start the SD card on the specified pin
   if (!SD.begin(SD_PIN)) {
@@ -75,7 +81,7 @@ void setup() {
   }
 
   // OPen the SD file and get to work
-  File file = SD.open(fileName);
+  File file = SD.open(fileName + FILE_EXTENSION);
   if (file) {
     Keyboard.begin();
 
