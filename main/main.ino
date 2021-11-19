@@ -26,6 +26,7 @@ const char ALL_END_CHARS[] PROGMEM = {' ', '\n', '\r'};
 const char LINE_END_CHARS[] PROGMEM = {'\n', '\r'};
 
 // Configuration
+const int SD_PIN PROGMEM = 4;
 const int PINS[] PROGMEM = {5, 6, 7, 8, 9};
 const int MAX_STRING_READ_LENGTH PROGMEM = 1024;
 const char FILE_EXTENSION[] PROGMEM = ".txt";
@@ -53,8 +54,8 @@ void setup() {
   // Parse the index to a file name
   String fileName = String(fileIndex) + FILE_EXTENSION;
 
-  // Start the SD card on pin 4
-  if (!SD.begin(4)) {
+  // Start the SD card on the specified pin
+  if (!SD.begin(SD_PIN)) {
     return; // If the SD card fails to start, we exit
   }
 
